@@ -61,7 +61,6 @@ showhelp()
 	echo
     echo '-k | --kill:	Block all ip addresses making more than N connections'
 	echo
-    echo '-c | --cron:	[Deprecated] Create cron job to run this script regularly (default 1 mins)'
 	echo '--startonboot [on|off]: Insert DDOS in the chkconfig to start when system boot'
 }
 
@@ -310,25 +309,6 @@ unban_ip_list()
     echo "$SBINDIR/ddos -f > /dev/null 2>&1" >> $UNBAN_SCRIPT
     echo "rm -f $UNBAN_SCRIPT" >> $UNBAN_SCRIPT
     . $UNBAN_SCRIPT &
-}
-
-add_to_cron()
-{
-    su_required
-
-    rm -f $CRON
-    if [ $FREQ -le 2 ]; then
-        echo "0-59/$FREQ * * * * root $SBINDIR/ddos >/dev/null 2>&1" > $CRON
-    else
-        let "START_MINUTE = $RANDOM % ($FREQ - 1)"
-        let "START_MINUTE = $START_MINUTE + 1"
-        let "END_MINUTE = 60 - $FREQ + $START_MINUTE"
-        echo "$START_MINUTE-$END_MINUTE/$FREQ * * * * root $SBINDIR/ddos >/dev/null 2>&1" > $CRON
-    fi
-
-    chmod 644 $CRON
-
-    log_msg "added cron job"
 }
 
 # Check active connections and ban if neccessary.
@@ -639,10 +619,6 @@ while [ $1 ]; do
     case $1 in
         '-h' | '--help' | '?' )
             showhelp
-            exit
-            ;;
-        '--cron' | '-c' )
-            add_to_cron
             exit
             ;;
         '--free-banned' | '-f' )
