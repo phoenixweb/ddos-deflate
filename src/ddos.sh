@@ -12,7 +12,7 @@
 #  read the LICENSE file before you make copies or distribute this program   #
 ##############################################################################
 
-SOFTWARE_VERSION="0.8.1"
+SOFTWARE_VERSION="0.8.2"
 CONF_PATH="/etc/ddos"
 CONF_PATH="${CONF_PATH}/"
 BANNED_DB="/var/lib/ddos/banned.ip.db"
@@ -44,7 +44,7 @@ showhelp()
 {
     head
     echo 'Usage: ddos [OPTIONS] [N]'
-    echo 'N : number of tcp/udp connections (default 150)'
+    echo 'N : number of tcp/udp connections (default $NO_OF_CONNECTIONS)'
     echo
     echo 'OPTIONS:'
     echo '-h | --help:	Show this help screen'
@@ -188,7 +188,7 @@ ban_ip_now() {
 		$IPT -I INPUT -s $IP_TO_BAN -j REJECT
 	fi
 
-	kill_connections $IP_TO_BAN | log_stream &
+	#kill_connections $IP_TO_BAN | log_stream &
 
 	echo "Adding banned IP $IP_TO_BAN to database";
 	echo "$IP_TO_BAN    $START_TIME    $END_TIME    $SERVICE    $NUM_OF_CONNECTIONS    $IP_COUNTRY    $IP_HOSTNAME" >> $BANNED_DB
@@ -389,22 +389,20 @@ netstatFormatted()
         # Strip netstat heading
         tail -n +3 | \
 		# Separate Ports from IPv4 and IPv6 address
-		sed "s/:\([0-9+]*\s\)/\t\1\t/g"
+		sed "s/:\([0-9+]*\s\)/\t\1\t/g" | \
+        # Match only the given connection states
+        grep -E "$CONN_STATES"
 }
 # Active connections to server.
 view_ip_connections()
 {
     netstatFormatted | \
-        # Match only the given connection states
-        grep -E "$CONN_STATES" | \
         # Extract only the IP given
         awk -v x=$1 '($6 = x){print}'
 }
 view_connections()
 {
     netstatFormatted | \
-        # Match only the given connection states
-        grep -E "$CONN_STATES" | \
 		# Exclude FTP Active Ports
 		awk -v x="^($FTP_ACTIVE_PORTS)$" '($5 !~ x){print}' | \
 		# Exclude FTP Passive ports
@@ -422,19 +420,11 @@ view_connections()
 # Active HTTP connections to server.
 view_http_connections()
 {
-    netstat -ntu | \
-        # Strip netstat heading
-        tail -n +3 | \
-        # Match only the given connection states
-        grep -E "$CONN_STATES" | \
-        # Extract both destination and source ip address
-        awk '{print $5" "$4}' | \
+    netstatFormatted | \
 		# Extract only HTTP and HTTPS ports
-		egrep ":($HTTP_PORTS)$"	| \
+        awk -v x="^($HTTP_PORTS)$" '($5 ~ x){print}' | \
 		# Extract only source IP address
-		awk '{print $1}' | \
-        # Strip port without affecting ipv6 addresses (experimental)
-        sed "s/:[0-9+]*$//g" | \
+		awk '{print $6}' | \
         # Sort addresses for uniq to work correctly
         sort | \
         # Group same occurrences of ip and prepend amount of occurences found
