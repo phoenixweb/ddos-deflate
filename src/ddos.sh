@@ -406,9 +406,9 @@ view_connections()
         # Match only the given connection states
         grep -E "$CONN_STATES" | \
 		# Exclude FTP Active Ports
-		awk -v x=$FTP_ACTIVE_PORTS '($5 !~ x){print}' | \
+		awk -v x="^($FTP_ACTIVE_PORTS)$" '($5 !~ x){print}' | \
 		# Exclude FTP Passive ports
-		awk -v x=$FTP_PASSIVE_PORTS_START -v y=$FTP_PASSIVE_PORTS_STOP '!($5 >= x && $5 <= y){print}'  | \
+		awk -v x="$FTP_PASSIVE_PORTS_START" -v y="$FTP_PASSIVE_PORTS_END" '!($5 >= x && $5 <= y){print}'  | \
 		# Extract only source IP address
 		awk '{print $6}' | \
         # Sort addresses for uniq to work correctly
